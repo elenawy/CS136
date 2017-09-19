@@ -1,10 +1,6 @@
 #!/usr/bin/python
 
-# This is a dummy peer that just illustrates the available information your peers 
-# have available.
-
-# You'll want to copy this file to AgentNameXXX.py for various versions of XXX,
-# probably get rid of the silly logging messages, and then add more logic.
+# This is a Bit Torrent Reference Client peer that 
 
 import random
 import logging
@@ -48,27 +44,39 @@ class MewtStd(Peer):
         # Symmetry breaking is good...
         random.shuffle(needed_pieces)
         
-        # Sort peers by id.  This is probably not a useful sort, but other 
-        # sorts might be useful
-        peers.sort(key=lambda p: p.id)
+        # Sort peers by id.  This is probably not a useful sort, but other sorts may be useful.
+        # we could sort by peer bandwith (larger bw, the more blocks we can download), 
+        # or availability size (get pieces we need before agent completes its file and leaves)
+        peers.sort(key=lambda p: p.id) 
+
+        np_count_dict = pieceAvailabilityCount(peers, needed_pieces)
+
+        # greatest to least availability
+        sorted_np_count_lst = sort(np_count_dict.items(), Reverse=True)
+
         # request all available pieces from all peers!
         # (up to self.max_requests from each)
         for peer in peers:
             av_set = set(peer.available_pieces)
             isect = av_set.intersection(np_set)
+            random.shuffle(isect)
             n = min(self.max_requests, len(isect))
-            # More symmetry breaking -- ask for random pieces.
-            # This would be the place to try fancier piece-requesting strategies
-            # to avoid getting the same thing from multiple peers at a time.
-            for piece_id in random.sample(isect, n):
-                # aha! The peer has this piece! Request it.
-                # which part of the piece do we need next?
-                # (must get the next-needed blocks in order)
+            
+            # rarest-first piece-request strategy: request up to n rarest pieces from peer
+            for piece_id, _ in sorted_np_count_lst:
+                if (n <= 0) {
+                    break
+                }
+                # get the block we want to start downloading the piece and make the request to the peer
                 start_block = self.pieces[piece_id]
                 r = Request(self.id, peer.id, piece_id, start_block)
                 requests.append(r)
+                
+                #decrement request count
+                n -= 1
 
         return requests
+
 
     def uploads(self, requests, peers, history):
         """
@@ -89,6 +97,7 @@ class MewtStd(Peer):
         # has a list of Download objects for each Download to this peer in
         # the previous round.
 
+
         if len(requests) == 0:
             logging.debug("No one wants my pieces!")
             chosen = []
@@ -106,5 +115,67 @@ class MewtStd(Peer):
         # create actual uploads out of the list of peer ids and bandwidths
         uploads = [Upload(self.id, peer_id, bw)
                    for (peer_id, bw) in zip(chosen, bws)]
-            
+        
         return uploads
+
+
+# return piece availability count for pieces that are needed
+def pieceAvailabilityCount(peers, needed_pieces):
+    piece_count_dict = {}
+
+    check_pieces_available = False;
+    for p in peers:
+        for piece in p.available_pieces:
+            if piece in needed_pieces:
+                if piece in piece_count_dict:
+                    piece_count_dict[piece] += 1
+                else:
+                    piece_count_dict[piece] = 1
+                    check_pieces_available = True
+
+    if check_pieces_available == False:
+        print "None of pieces needed are available"
+        return None
+
+    return piece_count_dict
+
+
+def downloadRateByPeerInLastNRounds(n, agent, peers, history):
+    rd  = history.current_round - 1
+
+    downloads_by_agent = history.downloads[agent]
+
+    peer_upload_to_agent_dict = {}
+
+    peer_uploadspeed_to_agent_dict = {}
+
+    while n > 0:
+        for download in downloads_by_agent[rd]:
+            if download.from_id in peers and download.to_id == agent:
+                peer = download.from_id
+
+                # track how many blocks that agent received from peer over past n periods
+                if peer in peer_upload_to_agent_dict:
+                    peer_upload_to_agent_dict[peer] += download.blocks
+                else:
+                    peer_upload_to_agent_dict[peer] = download.blocks
+                
+                # update the uploadspeed that peer uploaded to the agent
+                peer_uploadspeed_to_agent_dict[peer] = peer.up_bw
+
+        # decrease the round
+        rd-= 1
+        # decrease n
+        n -= 1
+
+    return downloadRateByPeerInLastNRounds
+
+
+
+
+
+
+
+
+
+

@@ -11,7 +11,8 @@ class Seed(Peer):
         return []
 
     def uploads(self, requests, peers, history):
-        max_upload = 4  # max num of peers to upload to at a time
+        # This is unchoke slots
+        max_upload = 4  # max num of peers to upload to at a time 
         requester_ids = list(set(map(lambda r: r.requester_id, requests)))
 
         n = min(max_upload, len(requester_ids))
