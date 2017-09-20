@@ -11,7 +11,7 @@ class Seed(Peer):
         return []
 
     def uploads(self, requests, peers, history):
-        # This is unchoke slots
+        # I think this is unchoke slots
         max_upload = 4  # max num of peers to upload to at a time 
         requester_ids = list(set(map(lambda r: r.requester_id, requests)))
 

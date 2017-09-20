@@ -14,6 +14,7 @@ class MewtStd(Peer):
         print "post_init(): %s here!" % self.id
         self.dummy_state = dict()
         self.dummy_state["cake"] = "lie"
+        self.num_unchoke_slots = 4
     
     def requests(self, peers, history):
         """
@@ -49,10 +50,15 @@ class MewtStd(Peer):
         # or availability size (get pieces we need before agent completes its file and leaves)
         peers.sort(key=lambda p: p.id) 
 
+        # dictionary that provides the availability of each piece that peer i needs
         np_count_dict = pieceAvailabilityCount(peers, needed_pieces)
 
-        # greatest to least availability
-        sorted_np_count_lst = sort(np_count_dict.items(), Reverse=True)
+        if np_count_dict == None:
+            print "No Requests: None of pieces needed are available"
+            return None
+
+        # greatest to least availability e.g [ (piece 1: 10), (piece 2: 11)]
+        sorted_np_count_lst = sorted(np_count_dict.items(), key=lambda x:x[1])
 
         # request all available pieces from all peers!
         # (up to self.max_requests from each)
@@ -67,13 +73,14 @@ class MewtStd(Peer):
                 if (n <= 0) {
                     break
                 }
-                # get the block we want to start downloading the piece and make the request to the peer
-                start_block = self.pieces[piece_id]
-                r = Request(self.id, peer.id, piece_id, start_block)
-                requests.append(r)
-                
-                #decrement request count
-                n -= 1
+                if (piece_id in av_set):
+                    # get the block we want to start downloading the piece and make the request to the peer
+                    start_block = self.pieces[piece_id]
+                    r = Request(self.id, peer.id, piece_id, start_block)
+                    requests.append(r)
+                    
+                    #decrement request count
+                    n -= 1
 
         return requests
 
@@ -92,10 +99,33 @@ class MewtStd(Peer):
         round = history.current_round()
         logging.debug("%s again.  It's round %d." % (
             self.id, round))
-        # One could look at other stuff in the history too here.
-        # For example, history.downloads[round-1] (if round != 0, of course)
-        # has a list of Download objects for each Download to this peer in
-        # the previous round.
+        
+        num_rounds_backtracking = 3
+
+        download_rate_by_peer = downloadRateByPeerInLastNRounds(
+            num_rounds_backtracking, self, peers, history)
+
+
+        # {peer: download rate} in ascending order
+        sorted_download_rate_by_peer = sorted(download_rate_by_peer.items, key=lambda x:x[1])
+
+        requesting_peers = set()
+        for request in requests:
+            requesting_peers.add(request.requester_id)
+
+
+        top3peers = set()
+        for peer, download_rate in sorted_download_rate_by_peer:
+            if peer.id in requesting_peers:
+                top3peers.add(peer)
+
+        # peer --> requests dictionary
+        peer_to_requests_dict = {}
+        for request in requests:
+            if request.requester_id in peer_to_requests_dict:
+                peer_to_requests_dict.append(request)
+
+        
 
 
         if len(requests) == 0:
@@ -121,6 +151,7 @@ class MewtStd(Peer):
 
 # return piece availability count for pieces that are needed
 def pieceAvailabilityCount(peers, needed_pieces):
+    # create piece: count dictionary
     piece_count_dict = {}
 
     check_pieces_available = False;
@@ -147,9 +178,8 @@ def downloadRateByPeerInLastNRounds(n, agent, peers, history):
 
     peer_upload_to_agent_dict = {}
 
-    peer_uploadspeed_to_agent_dict = {}
 
-    while n > 0:
+    while n > 0 and rd >= 0:
         for download in downloads_by_agent[rd]:
             if download.from_id in peers and download.to_id == agent:
                 peer = download.from_id
@@ -159,9 +189,6 @@ def downloadRateByPeerInLastNRounds(n, agent, peers, history):
                     peer_upload_to_agent_dict[peer] += download.blocks
                 else:
                     peer_upload_to_agent_dict[peer] = download.blocks
-                
-                # update the uploadspeed that peer uploaded to the agent
-                peer_uploadspeed_to_agent_dict[peer] = peer.up_bw
 
         # decrease the round
         rd-= 1
