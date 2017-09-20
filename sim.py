@@ -93,6 +93,7 @@ class Sim:
 
             bad_piece_id = lambda r: (r.piece_id < 0 or
                                       r.piece_id >= self.config.num_pieces)
+            print "**********", bad_piece_id
             check(bad_piece_id, "Request asks for non-existent piece!")
             
             bad_peer_id = lambda r: r.peer_id not in self.peer_ids
@@ -135,6 +136,7 @@ class Sim:
             for peer_id in peer_pieces:
                 if peer_done(peer_pieces, peer_id):
                     history.peer_is_done(round, peer_id)
+                    print "******** peer is done", peer_id
                 else:
                     result = False
             return result

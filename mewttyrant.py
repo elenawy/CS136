@@ -108,3 +108,23 @@ class MewtTyrant(Peer):
                    for (peer_id, bw) in zip(chosen, bws)]
             
         return uploads
+
+
+         # # peer --> requests dictionary
+        # top3peers_to_requests_dict = {}
+        # for request in requests:
+        #     if request.requester_id in peer_to_requests_dict and request.requester_id in top3peers:
+        #         peer_to_requests_dict[request.requester_id].append(request)
+        #     else:
+        #         peer_to_requests_dict[request.requester_id] = [request]
+
+        # flag_upload_added = False
+        # total_upload_bw = self.up_bw
+        # uploads = []
+        # while True:
+        #     for peer_id in top3peers:
+        #         if len(peer_to_requests_dict[peer_id]) > 0:
+        #             request_to_be_added = peer_to_requests_dict[peer_id][0]
+        #             bandwidth = self.conf.blocks_per_piece - request_to_be_added.start + 1
+        #             upload = Upload(self.id, peer_id, )
+
