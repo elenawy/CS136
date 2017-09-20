@@ -118,7 +118,7 @@ class MewtStd(Peer):
             return []
         
         # number of rounds to track in history to determine unchoke slots
-        num_rounds_backtracking = 2
+        num_rounds_backtracking = 5
         num_unchoke_slots = 3
 
         # set of peers who get an unchoke slot
@@ -157,8 +157,10 @@ class MewtStd(Peer):
                 unchoked_peers.add(peer_id)
 
         # every 4th round, optimistically unchoke a peer that is not one of the top 3 peers
-        if (round % 5 == 0):
+        if (round % 4 == 0 and len(requesting_peers) > len(unchoked_peers)):
             chosen_peer = random.choice(requesting_peers)
+            while (chosen_peer in unchoked_peers):
+                chosen_peer = random.choice(requesting_peers)
             unchoked_peers.add(chosen_peer)
 
 
