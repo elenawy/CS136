@@ -40,7 +40,6 @@ class MewtStd(Peer):
         # peers.sort(key=lambda p: p.id) 
         random.shuffle(peers)
 
-
         sorted_np_count_lst = pieceAvailabilityCount2(peers, needed_pieces)
         if sorted_np_count_lst == None:
             print "No Requests: None of pieces needed are available"

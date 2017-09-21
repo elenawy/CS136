@@ -103,7 +103,7 @@ class MewtTyrant(Peer):
         round = history.current_round()
        
         g = .1      # gamma 
-        r = 3       # 3 periods backwards check
+        r = 3     # 3 periods backwards check
         a = .20     # 20%
         
         bandwidth_capacity = self.up_bw
@@ -127,8 +127,8 @@ class MewtTyrant(Peer):
                 self.num_unchoke_slots = int(math.sqrt(self.up_bw)) 
 
                 # fix initialize the parameters based of starting peer
-                self.download_rate_estimates[peer.id] = self.up_bw / len(peers)
-                self.threshold_upload_rate[peer.id] = self.up_bw
+                self.download_rate_estimates[peer.id] = self.up_bw / float (self.num_unchoke_slots)
+                self.threshold_upload_rate[peer.id] =  self.up_bw / float(self.num_unchoke_slots)
 
             chosen_peers = []
             if len(requesting_peers) >= self.num_unchoke_slots:
@@ -170,7 +170,7 @@ class MewtTyrant(Peer):
                 if peer.id not in seen_unchoked_by_peer:
                     self.times_unchoked_by_peer[peer.id] = 0
 
-            updatePeerAfterRound(self, history, g, a, r) 
+            updatePeerAfterRound(self, history, g, a, r, peers) 
 
             # sort requesting peers by f_ij / T_ij
             random.shuffle(requesting_peers)
@@ -195,7 +195,7 @@ class MewtTyrant(Peer):
         return uploads
 
 # will be called at beginning of the round to update for the last round that just occured
-def updatePeerAfterRound(self, history, g, a, r):
+def updatePeerAfterRound(self, history, g, a, r, peers):
     for uc_peer_id in self.unchoked_peers:
 
         # case b)
@@ -210,7 +210,11 @@ def updatePeerAfterRound(self, history, g, a, r):
 
         else:  # case a) peer j did not unchoke i
             self.threshold_upload_rate[uc_peer_id] *= float(1 + a)
-            self.download_rate_estimates[uc_peer_id] = self.total_downloads_gave / float(self.num_unchoke_slots)
+            have_messages = 0
+            for p in peers:
+                if p.id == uc_peer_id:
+                    have_messages = len(p.available_pieces)
+            self.download_rate_estimates[uc_peer_id] =  have_messages/ 8.
 
 
 def calculateTotalDownloadedFromPeer(self, history, uploader_id):
