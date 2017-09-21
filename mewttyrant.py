@@ -55,7 +55,7 @@ class MewtTyrant(Peer):
         # we could sort by peer bandwith (larger bw, the more blocks we can download), 
         # or availability size (get pieces we need before agent completes its file and leaves)
         # peers.sort(key=lambda p: p.id) 
-        random.shuffle(peers)
+        # random.shuffle(peers)
 
         sorted_np_count_lst = pieceAvailabilityCount2(peers, needed_pieces)
         if sorted_np_count_lst == None:
@@ -124,11 +124,11 @@ class MewtTyrant(Peer):
             for peer in peers:
                 self.times_unchoked_by_peer[peer.id] = 0
 
-                self.num_unchoke_slots = int(math.sqrt(self.up_bw) * .4) 
+                self.num_unchoke_slots = int(math.sqrt(self.up_bw)) 
 
                 # fix initialize the parameters based of starting peer
-                self.download_rate_estimates[peer.id] = self.up_bw / self.num_unchoke_slots
-                self.threshold_upload_rate[peer.id] = self.up_bw / self.num_unchoke_slots
+                self.download_rate_estimates[peer.id] = self.up_bw / len(peers)
+                self.threshold_upload_rate[peer.id] = self.up_bw
 
             chosen_peers = []
             if len(requesting_peers) >= self.num_unchoke_slots:
@@ -170,17 +170,16 @@ class MewtTyrant(Peer):
                 if peer.id not in seen_unchoked_by_peer:
                     self.times_unchoked_by_peer[peer.id] = 0
 
-        
             updatePeerAfterRound(self, history, g, a, r) 
 
             # sort requesting peers by f_ij / T_ij
-            random.shuffle(peers)
-            sortedPeers = sorted(peers, reverse=True, key= lambda x: float(self.download_rate_estimates[x.id] / self.threshold_upload_rate[x.id]))
+            random.shuffle(requesting_peers)
+            sortedPeers = sorted(requesting_peers, reverse=True, key= lambda x: float(self.download_rate_estimates[x] / self.threshold_upload_rate[x]))
 
             for p in sortedPeers:
-                bandwidth_allocated = self.threshold_upload_rate[p.id]
+                bandwidth_allocated = self.threshold_upload_rate[p]
                 if bandwidth_capacity >= bandwidth_allocated:
-                    self.unchoked_peers.add(p.id)
+                    self.unchoked_peers.add(p)
                     bandwidth_capacity -= bandwidth_allocated
 
                     self.total_downloads_gave += bandwidth_allocated
@@ -266,7 +265,6 @@ def pieceAvailabilityCount2(peers, needed_pieces):
 
     count_piece_dict = {}
 
-
     for piece, count in piece_count_dict.items():
         if count in count_piece_dict:
             count_piece_dict[count].append(piece)
@@ -275,20 +273,5 @@ def pieceAvailabilityCount2(peers, needed_pieces):
 
     sorted_list = sorted(count_piece_dict.items())
     return sorted_list
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 

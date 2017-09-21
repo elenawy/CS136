@@ -30,17 +30,6 @@ class MewtStd(Peer):
         needed_pieces = filter(needed, range(len(self.pieces)))
         np_set = set(needed_pieces)  # sets support fast intersection ops.
 
-        # logging.debug("%s here: still need pieces %s" % (
-        #     self.id, needed_pieces))
-        # logging.debug("%s still here. Here are some peers:" % self.id)
-
-        # for p in peers:
-        #     logging.debug("id: %s, available pieces: %s" % (p.id, p.available_pieces))
-
-        # logging.debug("And look, I have my entire history available too:")
-        # logging.debug("look at the AgentHistory class in history.py for details")
-        # logging.debug(str(history))
-
         requests = []   # We'll put all the things we want here
         # Symmetry breaking is good...
         random.shuffle(needed_pieces)
@@ -59,7 +48,7 @@ class MewtStd(Peer):
 
 
         # request all available pieces from all peers!
-        # (up to self.max_requests from each)
+        # (up to self.max_requests from each)   
         for peer in peers:
             av_set = set(peer.available_pieces)
             isect = list(av_set.intersection(np_set))
