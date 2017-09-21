@@ -125,7 +125,6 @@ class MewtTyrant(Peer):
                 self.times_unchoked_by_peer[peer.id] = 0
 
                 self.num_unchoke_slots = int(math.sqrt(self.up_bw)) 
-
                 # fix initialize the parameters based of starting peer
                 self.download_rate_estimates[peer.id] = self.up_bw / float (self.num_unchoke_slots)
                 self.threshold_upload_rate[peer.id] =  self.up_bw / float(self.num_unchoke_slots)
