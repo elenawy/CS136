@@ -4,6 +4,7 @@
 
 import random
 import logging
+import math
 
 from messages import Upload, Request
 from util import even_split
@@ -14,7 +15,7 @@ class MewtStd(Peer):
         print "post_init(): %s here!" % self.id
         self.dummy_state = dict()
         self.dummy_state["cake"] = "lie"
-        self.num_unchoke_slots = 4
+        self.optimistically_unchoked_peer = None
     
     def requests(self, peers, history):
         """
@@ -28,7 +29,6 @@ class MewtStd(Peer):
         needed = lambda i: self.pieces[i] < self.conf.blocks_per_piece
         needed_pieces = filter(needed, range(len(self.pieces)))
         np_set = set(needed_pieces)  # sets support fast intersection ops.
-
 
         # logging.debug("%s here: still need pieces %s" % (
         #     self.id, needed_pieces))
@@ -48,7 +48,9 @@ class MewtStd(Peer):
         # Sort peers by id.  This is probably not a useful sort, but other sorts may be useful.
         # we could sort by peer bandwith (larger bw, the more blocks we can download), 
         # or availability size (get pieces we need before agent completes its file and leaves)
-        peers.sort(key=lambda p: p.id) 
+        # peers.sort(key=lambda p: p.id) 
+        random.shuffle(peers)
+
 
         # # dictionary that provides the availability of each piece that peer i needs
         # np_count_dict = pieceAvailabilityCount(peers, needed_pieces)
@@ -61,7 +63,6 @@ class MewtStd(Peer):
         # unsorted_list_counts = np_count_dict.items()
         # random.shuffle(unsorted_list_counts)
         # sorted_np_count_lst = sorted(unsorted_list_counts, key=lambda x:x[1])
-
 
         sorted_np_count_lst = pieceAvailabilityCount2(peers, needed_pieces)
         if sorted_np_count_lst == None:
@@ -81,18 +82,18 @@ class MewtStd(Peer):
             
             # rarest-first piece-request strategy: request up to n rarest pieces from peer
             for _ ,piece_ids in sorted_np_count_lst:
-                if (n <= 0):
-                    break
-                
-                piece_id = random.choice(piece_ids)
-                if (piece_id in av_set):
-                    # get the block we want to start downloading the piece and make the request to the peer
-                    start_block = self.pieces[piece_id]
-                    r = Request(self.id, peer.id, piece_id, start_block)
-                    requests.append(r)
-                    
-                    #decrement request count
-                    n -= 1
+                random.shuffle(piece_ids)
+                for piece_id in piece_ids:
+                    if (n <= 0):
+                        break
+                    if (piece_id in av_set):
+                        # get the block we want to start downloading the piece and make the request to the peer
+                        start_block = self.pieces[piece_id]
+                        r = Request(self.id, peer.id, piece_id, start_block)
+                        requests.append(r)
+                        
+                        #decrement request count
+                        n -= 1
 
         return requests
 
@@ -118,8 +119,8 @@ class MewtStd(Peer):
             return []
         
         # number of rounds to track in history to determine unchoke slots
-        num_rounds_backtracking = 5
-        num_unchoke_slots = 3
+        num_rounds_backtracking = 2
+        num_unchoke_slots = int(math.sqrt(self.up_bw))
 
         # set of peers who get an unchoke slot
         unchoked_peers = set()
@@ -135,11 +136,10 @@ class MewtStd(Peer):
         # if round is less than 2 just randomly allocate unchoke slots, otherwise determine by highest downlaod rate
         if (round < 2):
             chosen_peers = []
-            if len(requesting_peers) >= 3:
-                chosen_peers = random.sample(requesting_peers,3)
+            if len(requesting_peers) >= num_unchoke_slots:
+                chosen_peers = random.sample(requesting_peers,num_unchoke_slots)
             else:
                 chosen_peers = requesting_peers
-
             for chosen_p in chosen_peers:
                 unchoked_peers.add(chosen_p)
 
@@ -147,7 +147,6 @@ class MewtStd(Peer):
             # {peer: download_rate, .....}
             peer_by_download_rate_map = findPeerByDownloadRateInLastNRounds(
                 num_rounds_backtracking, self, requesting_peers, history)
-
 
             # [(peer_id, download rate), ...] in descending order
             sorted_peer_by_download_rate = sorted(peer_by_download_rate_map.items(), key=lambda x:x[1], reverse=True)
@@ -157,22 +156,13 @@ class MewtStd(Peer):
                 unchoked_peers.add(peer_id)
 
         # every 4th round, optimistically unchoke a peer that is not one of the top 3 peers
-        if (round % 4 == 0 and len(requesting_peers) > len(unchoked_peers)):
-            chosen_peer = random.choice(requesting_peers)
-            while (chosen_peer in unchoked_peers):
-                chosen_peer = random.choice(requesting_peers)
-            unchoked_peers.add(chosen_peer)
-
-
-
-            # while (len(unchoked_peers) != num_unchoke_slots) and len(unchoked_peers) <= len(requesting_peers):
-            #     print "stuck"
-            #     # randomly choose a request and then get the requester id. 
-            #     # Assumption is that optimistic unchoke slot goes to a peer that made a request this round. 
-            #     # This ensures that the slot also does not go to the Uploader agent. 
-            #     optimistical_unchoked_peer = random.choice(requesting_peers)
-            #     unchoked_peers.add(optimistical_unchoked_peer)
-        
+        if (round > 0 and round % 3 == 0 and len(requesting_peers) > len(unchoked_peers)):
+            self.optimistically_unchoked_peer = random.choice(requesting_peers)
+            while (self.optimistically_unchoked_peer in unchoked_peers):
+                self.optimistically_unchoked_peer = random.choice(requesting_peers)
+            unchoked_peers.add(self.optimistically_unchoked_peer) 
+        elif (self.optimistically_unchoked_peer != None):
+            unchoked_peers.add(self.optimistically_unchoked_peer)
         
         if len(unchoked_peers) > 0:
             bws = even_split(self.up_bw, len(unchoked_peers))
@@ -182,7 +172,6 @@ class MewtStd(Peer):
 
         uploads = [Upload(self.id, peer_id, bw)
                    for (peer_id, bw) in zip(unchoked_peers, bws)]
-
 
         return uploads
 
@@ -219,6 +208,7 @@ def pieceAvailabilityCount2(peers, needed_pieces):
 
     count_piece_dict = {}
 
+
     for piece, count in piece_count_dict.items():
         if count in count_piece_dict:
             count_piece_dict[count].append(piece)
@@ -228,14 +218,12 @@ def pieceAvailabilityCount2(peers, needed_pieces):
     sorted_list = sorted(count_piece_dict.items())
     return sorted_list
 
-
 # find how much each requesting_peer has downloaded to Agent in last n rounds
 def findPeerByDownloadRateInLastNRounds(n, agent, requesting_peers, history):
     rd  = history.current_round() - 1
     downloads_by_agent = history.downloads
 
     peer_upload_to_agent_dict = {}
-
 
     while (n > 0 and rd >= 0):
         for download in downloads_by_agent[rd]:

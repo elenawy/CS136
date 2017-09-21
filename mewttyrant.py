@@ -1,10 +1,5 @@
 #!/usr/bin/python
 
-# This is a dummy peer that just illustrates the available information your peers 
-# have available.
-
-# You'll want to copy this file to AgentNameXXX.py for various versions of XXX,
-# probably get rid of the silly logging messages, and then add more logic.
 
 import random
 import logging
@@ -19,7 +14,7 @@ class MewtTyrant(Peer):
         self.dummy_state = dict()
         self.dummy_state["cake"] = "lie"
     
-    def requests(self, peers, history):
+       def requests(self, peers, history):
         """
         peers: available info about the peers (who has what pieces)
         history: what's happened so far as far as this peer can see
@@ -32,41 +27,46 @@ class MewtTyrant(Peer):
         needed_pieces = filter(needed, range(len(self.pieces)))
         np_set = set(needed_pieces)  # sets support fast intersection ops.
 
-
-        logging.debug("%s here: still need pieces %s" % (
-            self.id, needed_pieces))
-
-        logging.debug("%s still here. Here are some peers:" % self.id)
-        for p in peers:
-            logging.debug("id: %s, available pieces: %s" % (p.id, p.available_pieces))
-
-        logging.debug("And look, I have my entire history available too:")
-        logging.debug("look at the AgentHistory class in history.py for details")
-        logging.debug(str(history))
-
-        requests = []   # We'll put all the things we want here
+        requests = []   
         # Symmetry breaking is good...
         random.shuffle(needed_pieces)
         
-        # Sort peers by id.  This is probably not a useful sort, but other 
-        # sorts might be useful
-        peers.sort(key=lambda p: p.id)
+        # Sort peers by id.  This is probably not a useful sort, but other sorts may be useful.
+        # we could sort by peer bandwith (larger bw, the more blocks we can download), 
+        # or availability size (get pieces we need before agent completes its file and leaves)
+        # peers.sort(key=lambda p: p.id) 
+        random.shuffle(peers)
+
+        sorted_np_count_lst = pieceAvailabilityCount2(peers, needed_pieces)
+        if sorted_np_count_lst == None:
+            print "No Requests: None of pieces needed are available"
+            return requests
+
+
         # request all available pieces from all peers!
         # (up to self.max_requests from each)
         for peer in peers:
             av_set = set(peer.available_pieces)
-            isect = av_set.intersection(np_set)
+            isect = list(av_set.intersection(np_set))
+
+            # randomly shuffle intersect list
+            random.shuffle(isect)
             n = min(self.max_requests, len(isect))
-            # More symmetry breaking -- ask for random pieces.
-            # This would be the place to try fancier piece-requesting strategies
-            # to avoid getting the same thing from multiple peers at a time.
-            for piece_id in random.sample(isect, n):
-                # aha! The peer has this piece! Request it.
-                # which part of the piece do we need next?
-                # (must get the next-needed blocks in order)
-                start_block = self.pieces[piece_id]
-                r = Request(self.id, peer.id, piece_id, start_block)
-                requests.append(r)
+            
+            # rarest-first piece-request strategy: request up to n rarest pieces from peer
+            for _ ,piece_ids in sorted_np_count_lst:
+                random.shuffle(piece_ids)
+                for piece_id in piece_ids:
+                    if (n <= 0):
+                        break
+                    if (piece_id in av_set):
+                        # get the block we want to start downloading the piece and make the request to the peer
+                        start_block = self.pieces[piece_id]
+                        r = Request(self.id, peer.id, piece_id, start_block)
+                        requests.append(r)
+                        
+                        #decrement request count
+                        n -= 1
 
         return requests
 
@@ -110,21 +110,4 @@ class MewtTyrant(Peer):
         return uploads
 
 
-         # # peer --> requests dictionary
-        # top3peers_to_requests_dict = {}
-        # for request in requests:
-        #     if request.requester_id in peer_to_requests_dict and request.requester_id in top3peers:
-        #         peer_to_requests_dict[request.requester_id].append(request)
-        #     else:
-        #         peer_to_requests_dict[request.requester_id] = [request]
-
-        # flag_upload_added = False
-        # total_upload_bw = self.up_bw
-        # uploads = []
-        # while True:
-        #     for peer_id in top3peers:
-        #         if len(peer_to_requests_dict[peer_id]) > 0:
-        #             request_to_be_added = peer_to_requests_dict[peer_id][0]
-        #             bandwidth = self.conf.blocks_per_piece - request_to_be_added.start + 1
-        #             upload = Upload(self.id, peer_id, )
-
+    
