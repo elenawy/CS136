@@ -52,18 +52,6 @@ class MewtStd(Peer):
         random.shuffle(peers)
 
 
-        # # dictionary that provides the availability of each piece that peer i needs
-        # np_count_dict = pieceAvailabilityCount(peers, needed_pieces)
-
-        # if (np_count_dict == None):
-        #     print "No Requests: None of pieces needed are available"
-        #     return requests
-
-        # # least to greatest availability e.g [ (piece 1: 10), (piece 2: 11)]
-        # unsorted_list_counts = np_count_dict.items()
-        # random.shuffle(unsorted_list_counts)
-        # sorted_np_count_lst = sorted(unsorted_list_counts, key=lambda x:x[1])
-
         sorted_np_count_lst = pieceAvailabilityCount2(peers, needed_pieces)
         if sorted_np_count_lst == None:
             print "No Requests: None of pieces needed are available"
@@ -76,6 +64,7 @@ class MewtStd(Peer):
             av_set = set(peer.available_pieces)
             isect = list(av_set.intersection(np_set))
 
+            
             # randomly shuffle intersect list
             random.shuffle(isect)
             n = min(self.max_requests, len(isect))
@@ -125,7 +114,6 @@ class MewtStd(Peer):
         # set of peers who get an unchoke slot
         unchoked_peers = set()
 
-
         # determine the list of peers who are requesting pieces from Agent
         requesting_peers = []
         for request in requests:
@@ -133,7 +121,7 @@ class MewtStd(Peer):
                 requesting_peers.append(request.requester_id)
 
         
-        # if round is less than 2 just randomly allocate unchoke slots, otherwise determine by highest downlaod rate
+        # if round is less than 2 just randomly allocate unchoke slots, otherwise determine by highest download rate
         if (round < 2):
             chosen_peers = []
             if len(requesting_peers) >= num_unchoke_slots:
@@ -164,6 +152,7 @@ class MewtStd(Peer):
         elif (self.optimistically_unchoked_peer != None):
             unchoked_peers.add(self.optimistically_unchoked_peer)
         
+        bws = []
         if len(unchoked_peers) > 0:
             bws = even_split(self.up_bw, len(unchoked_peers))
         else:
@@ -219,7 +208,7 @@ def pieceAvailabilityCount2(peers, needed_pieces):
     return sorted_list
 
 # find how much each requesting_peer has downloaded to Agent in last n rounds
-def findPeerByDownloadRateInLastNRounds(n, agent, requesting_peers, history):
+def findPeerByDownloadRateInLastNRounds(n, self, requesting_peers, history):
     rd  = history.current_round() - 1
     downloads_by_agent = history.downloads
 
@@ -227,7 +216,7 @@ def findPeerByDownloadRateInLastNRounds(n, agent, requesting_peers, history):
 
     while (n > 0 and rd >= 0):
         for download in downloads_by_agent[rd]:
-            if (download.from_id in requesting_peers and download.to_id == agent.id):
+            if (download.from_id in requesting_peers and download.to_id == self.id):
                 from_peer = download.from_id
 
                 # track how many blocks that agent received from peer in this rd
