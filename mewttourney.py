@@ -69,7 +69,7 @@ class MewtTourney(MewtStd):
             
         #     unchoked_peers.add(random.choice(requesting_peers))
 
-        # every 4th round, optimistically unchoke a peer that is not one of the top 3 peers
+        # every 3rd round, optimistically unchoke a peer that is not one of the top unchoked peers
         if (round > 0 and round % 3 == 0 and len(requesting_peers) > len(unchoked_peers)):
             optimistically_unchoked_peer = random.choice(requesting_peers)
             while (optimistically_unchoked_peer in unchoked_peers):
