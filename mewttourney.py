@@ -1,10 +1,6 @@
 #!/usr/bin/python
 
-# This is a dummy peer that just illustrates the available information your peers 
-# have available.
-
-# You'll want to copy this file to AgentNameXXX.py for various versions of XXX,
-# probably get rid of the silly logging messages, and then add more logic.
+# This is the Tournament client
 
 import random
 import logging
@@ -62,13 +58,7 @@ class MewtTourney(MewtStd):
         unchoked_peers = set()
         for k in range(min(num_unchoke_slots, len(sorted_peers_by_np))):
             unchoked_peers.add(sorted_peers_by_np[k][0].id)
-
-        # while (len(unchoked_peers) < num_unchoke_slots):
-        #     if len(unchoked_peers) >= len(requesting_peers): 
-        #         break
             
-        #     unchoked_peers.add(random.choice(requesting_peers))
-
         # every 3rd round, optimistically unchoke a peer that is not one of the top unchoked peers
         if (round > 0 and round % 3 == 0 and len(requesting_peers) > len(unchoked_peers)):
             optimistically_unchoked_peer = random.choice(requesting_peers)

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# This is a Bit Torrent Reference Client peer that 
+# This is a BitTorrent reference client peer
 
 import random
 import logging
@@ -33,11 +33,7 @@ class MewtStd(Peer):
         requests = []   # We'll put all the things we want here
         # Symmetry breaking is good...
         random.shuffle(needed_pieces)
-        
-        # Sort peers by id.  This is probably not a useful sort, but other sorts may be useful.
-        # we could sort by peer bandwith (larger bw, the more blocks we can download), 
-        # or availability size (get pieces we need before agent completes its file and leaves)
-        # peers.sort(key=lambda p: p.id) 
+
         random.shuffle(peers)
 
         sorted_np_count_lst = pieceAvailabilityCount2(peers, needed_pieces)
