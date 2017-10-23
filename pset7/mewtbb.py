@@ -5,7 +5,7 @@ import sys
 from gsp import GSP
 from util import argmax_index
 
-class BBAgent:
+class MewtBB:
     """Balanced bidding agent"""
     def __init__(self, id, value, budget):
         self.id = id
@@ -49,11 +49,39 @@ class BBAgent:
 
         returns a list of utilities per slot.
         """
-        # TODO: Fill this in
-        utilities = []   # Change this
+        m = len(prev_round.bids) - 1
+        utilities = []
 
-        
+        for i in range(m):
+            utilities[i] = getPos_j(t,i) * (self.value - paymentGivenOtherBids(t, history, i))
+
         return utilities
+
+    def getPos_j(t, j):
+        m = len(prev_round.bids) - 1
+        ct_1 = round(30*math.cos(math.pi*t / 24) + 50)
+        clicks_in_pos_j = []
+
+        for i in range(m):
+            clicks_in_pos_j[i] *= 0.75 ** (i-1)
+
+        sum_ct = sum(range(m))
+        ct_j = clicks_in_pos_j[j]
+        pos_j = float(ct_j) / sum_ct
+
+        return pos_j 
+
+    def paymentGivenOtherBids(self, t, history, j):
+        prev_round = history.round(t-1)
+        other_bids = filter(lambda (a_id, b): a_id != self.id, prev_round.bids)
+        other_bids.sort(key=lambda x: x[1])
+
+        if j > len(other_bids):
+            return 0
+        else:
+            return other_bids[j-1][1]
+
+        print other_bids
 
     def target_slot(self, t, history, reserve):
         """Figure out the best slot to target, assuming that everyone else
@@ -78,13 +106,21 @@ class BBAgent:
         # (p_x is the price/click in slot x)
         # If s*_j is the top slot, bid the value v_j
 
+        if (t == 0):
+            return self.initial_bid()
+
         prev_round = history.round(t-1)
         (slot, min_bid, max_bid) = self.target_slot(t, history, reserve)
-
-        # TODO: Fill this in.
-        bid = 0  # change this
-        
-        return bid
+        target_payment = paymentGivenOtherBids(t, history, slot)
+        if target_payment > self.value:
+            return self.value
+        elif slot == 0:
+            return self.value
+        else:
+            target_ctr = getPos_j(t, slot)
+            previous_ctr = getPos_j(t, slot-1)
+            bid = - float(target_pos(self.value - target_payment)) / (previous_ctr) + self.value
+            return bid
 
     def __repr__(self):
         return "%s(id=%d, value=%d)" % (
