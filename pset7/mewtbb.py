@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import sys
-
+import math
 from gsp import GSP
 from util import argmax_index
 
@@ -49,16 +49,17 @@ class MewtBB:
 
         returns a list of utilities per slot.
         """
-        m = len(prev_round.bids) - 1
+        prev_round = history.round(t-1)
+        m = 5
         utilities = []
 
         for i in range(m):
-            utilities[i] = getPos_j(t,i) * (self.value - paymentGivenOtherBids(t, history, i))
+            utilities.append(self.getPos_j(t,i) * (self.value - self.paymentGivenOtherBids(t, history, i)))
 
         return utilities
 
-    def getPos_j(t, j):
-        m = len(prev_round.bids) - 1
+    def getPos_j(self, t, j):
+        m = 5
         ct_1 = round(30*math.cos(math.pi*t / 24) + 50)
         clicks_in_pos_j = []
 
@@ -72,16 +73,14 @@ class MewtBB:
         return pos_j 
 
     def paymentGivenOtherBids(self, t, history, j):
-        prev_round = history.round(t-1)
-        other_bids = filter(lambda (a_id, b): a_id != self.id, prev_round.bids)
-        other_bids.sort(key=lambda x: x[1])
+        prev_round = history(round(t-1))
+        other_bids = filter(lambda (a_id, b): a_id != self.id, prev_round.bids)
+        other_bids.sort(key=lambda x: x[1])
 
-        if j > len(other_bids):
-            return 0
-        else:
-            return other_bids[j-1][1]
-
-        print other_bids
+        if j > len(other_bids):
+            return 0
+        else:
+            return other_bids[j-1][1]
 
     def target_slot(self, t, history, reserve):
         """Figure out the best slot to target, assuming that everyone else
@@ -111,7 +110,12 @@ class MewtBB:
 
         prev_round = history.round(t-1)
         (slot, min_bid, max_bid) = self.target_slot(t, history, reserve)
-        target_payment = paymentGivenOtherBids(t, history, slot)
+
+
+        target_payment = self.paymentGivenOtherBids(t, history, slot)
+        if target_payment < reserve:
+            target_payment = reserve
+
         if target_payment > self.value:
             return self.value
         elif slot == 0:
