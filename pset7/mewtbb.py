@@ -50,37 +50,37 @@ class MewtBB:
         returns a list of utilities per slot.
         """
         prev_round = history.round(t-1)
-        m = 5
+        m = history.n_agents - 1
         utilities = []
 
         for i in range(m):
-            utilities.append(self.getPos_j(t,i) * (self.value - self.paymentGivenOtherBids(t, history, i)))
+            t_j = self.paymentGivenOtherBids(t, prev_round, i)
+            pos_j = self.getPos_j(t,i, m)
+            utilities.append(pos_j * (self.value - t_j))
 
         return utilities
 
-    def getPos_j(self, t, j):
-        m = 5
+    def getPos_j(self, t, j, m):
         ct_1 = round(30*math.cos(math.pi*t / 24) + 50)
         clicks_in_pos_j = []
 
         for i in range(m):
-            clicks_in_pos_j[i] *= 0.75 ** (i-1)
+            clicks_in_pos_j.append(ct_1 * 0.75 ** i)
 
-        sum_ct = sum(range(m))
+        sum_ct = sum(clicks_in_pos_j)
         ct_j = clicks_in_pos_j[j]
         pos_j = float(ct_j) / sum_ct
 
         return pos_j 
 
-    def paymentGivenOtherBids(self, t, history, j):
-        prev_round = history(round(t-1))
+    def paymentGivenOtherBids(self, t, prev_round, j):
         other_bids = filter(lambda (a_id, b): a_id != self.id, prev_round.bids)
-        other_bids.sort(key=lambda x: x[1])
+        other_bids.sort(key=lambda x: -x[1])
 
-        if j > len(other_bids):
+        if j >= len(other_bids):
             return 0
         else:
-            return other_bids[j-1][1]
+            return other_bids[j][1]
 
     def target_slot(self, t, history, reserve):
         """Figure out the best slot to target, assuming that everyone else
@@ -109,10 +109,11 @@ class MewtBB:
             return self.initial_bid()
 
         prev_round = history.round(t-1)
+        m = history.n_agents - 1
         (slot, min_bid, max_bid) = self.target_slot(t, history, reserve)
 
 
-        target_payment = self.paymentGivenOtherBids(t, history, slot)
+        target_payment = self.paymentGivenOtherBids(t, prev_round, slot)
         if target_payment < reserve:
             target_payment = reserve
 
@@ -121,9 +122,9 @@ class MewtBB:
         elif slot == 0:
             return self.value
         else:
-            target_ctr = getPos_j(t, slot)
-            previous_ctr = getPos_j(t, slot-1)
-            bid = - float(target_pos(self.value - target_payment)) / (previous_ctr) + self.value
+            target_ctr = self.getPos_j(t, slot, m)
+            previous_ctr = self.getPos_j(t, slot-1, m)
+            bid = - float(target_ctr * (self.value - target_payment)) / (previous_ctr) + self.value
             return bid
 
     def __repr__(self):
