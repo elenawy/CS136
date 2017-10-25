@@ -50,28 +50,16 @@ class MewtBB:
         returns a list of utilities per slot.
         """
         prev_round = history.round(t-1)
-        m = history.n_agents - 1
+        m = len(prev_round.clicks)
         utilities = []
 
         for i in range(m):
             t_j = self.paymentGivenOtherBids(t, prev_round, i)
-            pos_j = self.getPos_j(t,i, m)
-            utilities.append(pos_j * (self.value - t_j))
+            if (t_j < reserve):
+                t_j = reserve
+            utilities.append(prev_round.clicks[i] * (self.value - t_j))
 
         return utilities
-
-    def getPos_j(self, t, j, m):
-        ct_1 = round(30*math.cos(math.pi*t / 24) + 50)
-        clicks_in_pos_j = []
-
-        for i in range(m):
-            clicks_in_pos_j.append(ct_1 * 0.75 ** i)
-
-        sum_ct = sum(clicks_in_pos_j)
-        ct_j = clicks_in_pos_j[j]
-        pos_j = float(ct_j) / sum_ct
-
-        return pos_j 
 
     def paymentGivenOtherBids(self, t, prev_round, j):
         other_bids = filter(lambda (a_id, b): a_id != self.id, prev_round.bids)
@@ -109,7 +97,7 @@ class MewtBB:
             return self.initial_bid()
 
         prev_round = history.round(t-1)
-        m = history.n_agents - 1
+        m = len(prev_round.clicks)
         (slot, min_bid, max_bid) = self.target_slot(t, history, reserve)
 
 
@@ -122,8 +110,8 @@ class MewtBB:
         elif slot == 0:
             return self.value
         else:
-            target_ctr = self.getPos_j(t, slot, m)
-            previous_ctr = self.getPos_j(t, slot-1, m)
+            target_ctr = prev_round.clicks[slot]
+            previous_ctr = prev_round.clicks[slot-1]
             bid = - float(target_ctr * (self.value - target_payment)) / (previous_ctr) + self.value
             return bid
 
