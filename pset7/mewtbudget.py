@@ -5,41 +5,12 @@ import sys
 from gsp import GSP
 from util import argmax_index
 
-class MewtBudget:
+class MewtBudget(MewtBB):
     """Balanced bidding agent"""
     def __init__(self, id, value, budget):
         self.id = id
         self.value = value
-        self.budget = budget
-
-    def initial_bid(self, reserve):
-        return self.value / 2
-
-
-    def slot_info(self, t, history, reserve):
-        """Compute the following for each slot, assuming that everyone else
-        keeps their bids constant from the previous rounds.
-
-        Returns list of tuples [(slot_id, min_bid, max_bid)], where
-        min_bid is the bid needed to tie the other-agent bid for that slot
-        in the last round.  If slot_id = 0, max_bid is 2* min_bid.
-        Otherwise, it's the next highest min_bid (so bidding between min_bid
-        and max_bid would result in ending up in that slot)
-        """
-        prev_round = history.round(t-1)
-        other_bids = filter(lambda (a_id, b): a_id != self.id, prev_round.bids)
-
-        clicks = prev_round.clicks
-        def compute(s):
-            (min, max) = GSP.bid_range_for_slot(s, clicks, reserve, other_bids)
-            if max == None:
-                max = 2 * min
-            return (s, min, max)
-            
-        info = map(compute, range(len(clicks)))
-#        sys.stdout.write("slot info: %s\n" % info)
-        return info
-
+        self.budget = budget 
 
     def expected_utils(self, t, history, reserve):
         """
@@ -49,11 +20,21 @@ class MewtBudget:
 
         returns a list of utilities per slot.
         """
-        # TODO: Fill this in
-        utilities = []   # Change this
+        prev_round = history.round(t-1)
+        m = len(prev_round.clicks)
+        utilities = []
 
-        
+        for i in range(m):
+            t_j = self.paymentGivenOtherBids(t, prev_round, i)
+            if (t_j < reserve):
+                t_j = reserve
+            if (t_j >= target_budget):
+                utilities.append(float("-inf"))
+            else:
+                utilities.append(prev_round.clicks[i] * (self.value - t_j))
+
         return utilities
+
 
     def target_slot(self, t, history, reserve):
         """Figure out the best slot to target, assuming that everyone else
@@ -78,14 +59,33 @@ class MewtBudget:
         # (p_x is the price/click in slot x)
         # If s*_j is the top slot, bid the value v_j
 
+        bid = self.initial_bid()
+        if (t == 0):
+            return self.initial_bid()
+
         prev_round = history.round(t-1)
+        m = len(prev_round.clicks)
         (slot, min_bid, max_bid) = self.target_slot(t, history, reserve)
 
-        # TODO: Fill this in.
-        bid = 0  # change this
-        
-        return bid
 
+        target_payment = self.paymentGivenOtherBids(t, prev_round, slot)
+        if target_payment < reserve:
+            target_payment = reserve
+
+
+        if target_payment > self.value:
+            bid = self.value
+        elif slot == 0:
+            bid = self.value
+        else:
+            target_ctr = prev_round.clicks[slot]
+            previous_ctr = prev_round.clicks[slot-1]
+            bid = - float(target_ctr * (self.value - target_payment)) / (previous_ctr) + self.value
+
+        if bid > target_budget:
+            return target_budget
+        else:
+            return bid
     def __repr__(self):
         return "%s(id=%d, value=%d)" % (
             self.__class__.__name__, self.id, self.value)
