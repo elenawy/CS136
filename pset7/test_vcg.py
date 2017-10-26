@@ -86,3 +86,6 @@ def test_bid_ranges():
     assert bid_range(0, reserve) == (22, None)
     assert bid_range(1, reserve) == (22, 22)
     assert bid_range(2, reserve) == (22, 22)
+
+test_mechanism()
+test_bid_ranges()

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import random
+import copy
 
 from gsp import GSP
 
@@ -27,7 +28,6 @@ class VCG:
         """
 
         # The allocation is the same as GSP, so we filled that in for you...
-        
         valid = lambda (a, bid): bid >= reserve
         valid_bids = filter(valid, bids)
 
@@ -44,6 +44,7 @@ class VCG:
         
         (allocation, just_bids) = zip(*allocated_bids)
 
+
         # TODO: You just have to implement this function
         def total_payment(k):
             """
@@ -51,6 +52,16 @@ class VCG:
             """
             c = slot_clicks
             n = len(allocation)
+            if k >= n:
+                return 0
+            elif k == (n-1):
+                if len(valid_bids) > n: # if next bid is greater than reserve
+                    return c[k] * valid_bids[n][1]
+                else:
+                    return c[k] * reserve
+            else:
+                return (c[k] - c[k+1]) * just_bids[k+1] + total_payment(k+1)
+
 
             # TODO: Compute the payment and return it.
 
