@@ -20,6 +20,9 @@ class MewtBudget(MewtBB):
         n_periods = 48
         for i in range(n_periods):
             self.exp_ct1.append(round(30 * math.cos(math.pi * i / 24) + 50))
+    
+    def initial_bid(self, reserve):
+        return self.value
 
     def expected_utils(self, t, history, reserve):
         """
@@ -84,7 +87,7 @@ class MewtBudget(MewtBB):
         return round(float(remaining_budget * self.exp_ct1[t0] / exp_total_ct1))
 
     def calc_target_budget(self, baseline_budget, relative_budget_factor, relative_ct_factor):
-        target_budget = baseline_budget * relative_budget_factor * relative_ct_factor * 0.5
+        target_budget = baseline_budget * relative_budget_factor * relative_ct_factor * 0.2
         return target_budget
 
     def bid(self, t, history, reserve):
