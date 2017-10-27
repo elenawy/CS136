@@ -39,8 +39,7 @@ class MewtBudget(MewtBB):
                 t_j = reserve
             #if (t_j >= target_budget):
             #    utilities.append(float("-inf"))
-            else:
-                utilities.append(prev_round.clicks[i] * (self.value - t_j))
+            utilities.append(prev_round.clicks[i] * (self.value - t_j))
 
         return utilities
 
@@ -52,29 +51,40 @@ class MewtBudget(MewtBB):
         the other-agent bid for that slot in the last round.  If slot_id = 0,
         max_bid is min_bid * 2
         """
-        i = argmax_index(self.expected_utils(t, history, reserve))
+        utilities = self.expected_utils(t, history, reserve)
+        prev_round = history.round(t-1)
+        sorted_index = sorted(range(len(utilities)),
+                             key=lambda k: self.paymentGivenOtherBids(t, prev_round, k) * prev_round.clicks[k], reverse=True)
+        index_list = [k for k, idx in enumerate(sorted_index) if self.paymentGivenOtherBids(t, prev_round, idx)  * prev_round.clicks[k] < target_budget]
+        if (len(index_list) > 0):
+            i = index_list[0]
+        else:
+            i = sorted_index[len(sorted_index)-1]
         info = self.slot_info(t, history, reserve)
         return info[i]
 
     def calc_relative_budget_factor(self, history):
-        average_others_spent = float(sum(history.agents_spent) - history.agents_spent[self.id]) / (len(history.agents_spent) - 1)
-        if float(history.agents_spent[self.id]) == 0:
-            return 1
-        else:
-            return float(history.agents_spent[self.id]) / average_others_spent
+        average_others_spent = float(sum(history.agents_spent) - history.agents_spent[self.id]) / (
+        len(history.agents_spent) - 1)
+        if (average_others_spent < 1 or history.agents_spent[self.id] < 1):
+            return 1.0
+        return float(average_others_spent / history.agents_spent[self.id])
 
     def calc_relative_ct_factor(self, t, prev_round):
         average_clicks_past = float(self.past_clicks) / t
-        if average_clicks_past == 0:
-            return 1
-        else:
-            return sum(prev_round.clicks) / average_clicks_past
+        if (average_clicks_past < 1):
+            return 1.0
+        return sum(prev_round.clicks) / average_clicks_past
 
     def calc_baseline_budget(self, t, remaining_budget):
-        return remaining_budget * self.exp_ct1[t] / sum(self.exp_ct1[t:])
+        t0 = t % len(self.exp_ct1)
+        exp_total_ct1 = sum(self.exp_ct1[t0:len(self.exp_ct1)-1])
+        if (exp_total_ct1 < 1):
+            return remaining_budget
+        return round(float(remaining_budget * self.exp_ct1[t0] / exp_total_ct1))
 
     def calc_target_budget(self, baseline_budget, relative_budget_factor, relative_ct_factor):
-        target_budget = baseline_budget * relative_ct_factor
+        target_budget = baseline_budget * relative_budget_factor * relative_ct_factor * 0.5
         return target_budget
 
     def bid(self, t, history, reserve):
@@ -88,14 +98,12 @@ class MewtBudget(MewtBB):
         # (p_x is the price/click in slot x)
         # If s*_j is the top slot, bid the value v_j
 
-        bid = self.initial_bid(reserve)
         if (t == 0):
-            return self.initial_bid(reserve)
+            return self.initial_bid()
 
         prev_round = history.round(t - 1)
         m = len(prev_round.clicks)
 
-        # for calculating target budget
         self.past_clicks += sum(prev_round.clicks)
         remaining_budget = self.budget - history.agents_spent[self.id]
         base_budget = self.calc_baseline_budget(t, remaining_budget)
@@ -126,4 +134,3 @@ class MewtBudget(MewtBB):
     def __repr__(self):
         return "%s(id=%d, value=%d)" % (
             self.__class__.__name__, self.id, self.value)
-

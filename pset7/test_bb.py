@@ -94,7 +94,7 @@ def test_bb_reserve():
     assert a3.target_slot(t, history, reserve) == (0, 7, 14)
     # bid for slot 0: 20 (your value)
     dual_assert(a3.bid(t, history, reserve), 20)
-    print "\n\tFinidhed test_bb_reserve.."
+    print "\n\tFinished test_bb_reserve.."
 
 def test_bb_overbid():
     # Test that agents don't overbid
@@ -127,6 +127,6 @@ def test_bb_overbid():
     dual_assert (a1.bid(t, history, reserve), 8)
     print "\n\tFinished test_bb_overbid.."
 
-test_bb();
-test_bb_reserve();
-test_bb_overbid();
+test_bb()
+test_bb_reserve()
+test_bb_overbid()
