@@ -58,17 +58,23 @@ class MewtBudget(MewtBB):
 
     def calc_relative_budget_factor(self, history):
         average_others_spent = float(sum(history.agents_spent) - history.agents_spent[self.id]) / (len(history.agents_spent) - 1)
-        return float(history.agents_spent[self.id]) / average_others_spent
+        if float(history.agents_spent[self.id]) == 0:
+            return 1
+        else:
+            return float(history.agents_spent[self.id]) / average_others_spent
 
     def calc_relative_ct_factor(self, t, prev_round):
         average_clicks_past = float(self.past_clicks) / t
-        return sum(prev_round.clicks) / average_clicks_past
+        if average_clicks_past == 0:
+            return 1
+        else:
+            return sum(prev_round.clicks) / average_clicks_past
 
     def calc_baseline_budget(self, t, remaining_budget):
-        return remaining_budget * self.exp_ct1[t] / sum(self.exp_ct1(t, len(self.exp_ct1) - 1))
+        return remaining_budget * self.exp_ct1[t] / sum(self.exp_ct1[t:])
 
     def calc_target_budget(self, baseline_budget, relative_budget_factor, relative_ct_factor):
-        target_budget = baseline_budget * relative_budget_factor * relative_ct_factor
+        target_budget = baseline_budget * relative_ct_factor
         return target_budget
 
     def bid(self, t, history, reserve):
@@ -82,9 +88,9 @@ class MewtBudget(MewtBB):
         # (p_x is the price/click in slot x)
         # If s*_j is the top slot, bid the value v_j
 
-        bid = self.initial_bid()
+        bid = self.initial_bid(reserve)
         if (t == 0):
-            return self.initial_bid()
+            return self.initial_bid(reserve)
 
         prev_round = history.round(t - 1)
         m = len(prev_round.clicks)
@@ -92,10 +98,10 @@ class MewtBudget(MewtBB):
         # for calculating target budget
         self.past_clicks += sum(prev_round.clicks)
         remaining_budget = self.budget - history.agents_spent[self.id]
-        base_budget = self.calc_baseline_budget(self, t, remaining_budget)
-        b_factor = self.calc_relative_budget_factor(self, t, history)
-        ct_factor = self.calc_relative_ct_factor(self, t, prev_round)
-        target_budget = self.calc_target_budget(self, base_budget, b_factor, ct_factor)
+        base_budget = self.calc_baseline_budget(t, remaining_budget)
+        b_factor = self.calc_relative_budget_factor(history)
+        ct_factor = self.calc_relative_ct_factor(t, prev_round)
+        target_budget = self.calc_target_budget(base_budget, b_factor, ct_factor)
 
         (slot, min_bid, max_bid) = self.target_slot(t, target_budget, history, reserve)
 

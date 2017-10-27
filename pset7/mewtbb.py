@@ -94,7 +94,7 @@ class MewtBB:
         # If s*_j is the top slot, bid the value v_j
 
         if (t == 0):
-            return self.initial_bid()
+            return self.initial_bid(reserve)
 
         prev_round = history.round(t-1)
         m = len(prev_round.clicks)
